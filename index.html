@@ -348,7 +348,7 @@ function setSyncBar(msg, cls) {
 
  
 
-async function loadFromCloud() { // returns promise
+async function loadFromCloud() {
 
   if (!FIREBASE_URL || FIREBASE_URL === "YOUR_FIREBASE_URL_HERE") {
 
@@ -366,19 +366,15 @@ async function loadFromCloud() { // returns promise
 
     if (data) {
 
-      if (data.names) state.names = data.names;
+      if (data.names)  state.names  = data.names;
 
-      if (data.habits) state.habits = data.habits;
+      if (data.habits && data.habits.length) state.habits = data.habits;
 
       if (data.checks) state.checks = data.checks;
 
     }
 
     setSyncBar("Last synced " + new Date().toLocaleTimeString(), "");
-
-    render();
-
-    if (state.tab === "daily") renderDailyContent(+document.getElementById("dsel").value || new Date().getDate());
 
   } catch(e) {
 
@@ -794,11 +790,21 @@ state.tab   = "daily";
 
  
 
+// Render immediately with defaults so habits are visible right away
+
+render();
+
+renderDaily();
+
+ 
+
+// Then sync from cloud and re-render with any saved data
+
 loadFromCloud().then(() => {
 
-  renderDaily();
+  render();
 
-  // Set daily selector to today
+  renderDaily();
 
   const sel = document.getElementById("dsel");
 
@@ -807,12 +813,6 @@ loadFromCloud().then(() => {
   renderDailyContent(_today.getDate());
 
 });
-
- 
-
-// Pre-render monthly view so scroll works when tab is switched
-
-render();
 
  
 
