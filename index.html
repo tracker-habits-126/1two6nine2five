@@ -202,29 +202,15 @@ tr:hover td{background:#fafaf8}
 
   <div class="tabs">
 
-    <button class="tab active" id="tab-monthly" onclick="switchTab('monthly')">Monthly</button>
+    <button class="tab active" id="tab-daily" onclick="switchTab('daily')">Daily check-in</button>
 
-    <button class="tab" id="tab-daily" onclick="switchTab('daily')">Daily check-in</button>
-
-  </div>
-
- 
-
-  <div id="view-monthly">
-
-    <div class="table-wrap">
-
-      <table><thead id="thead"></thead><tbody id="tbody"></tbody></table>
-
-    </div>
-
-    <p class="note">★ = 3× weight &nbsp;|&nbsp; Click habit names to rename &nbsp;|&nbsp; Click player names to rename</p>
+    <button class="tab" id="tab-monthly" onclick="switchTab('monthly')">Monthly</button>
 
   </div>
 
  
 
-  <div id="view-daily" style="display:none">
+  <div id="view-daily">
 
     <div class="day-picker">
 
@@ -234,7 +220,15 @@ tr:hover td{background:#fafaf8}
 
     </div>
 
-    <div class="daily-wrap" id="daily-wrap"></div>
+  <div id="view-monthly" style="display:none">
+
+    <div class="table-wrap">
+
+      <table><thead id="thead"></thead><tbody id="tbody"></tbody></table>
+
+    </div>
+
+    <p class="note">★ = 3× weight &nbsp;|&nbsp; Click habit names to rename &nbsp;|&nbsp; Click player names to rename</p>
 
   </div>
 
@@ -248,9 +242,9 @@ tr:hover td{background:#fafaf8}
 
 // Replace with your Firebase Realtime Database URL:
 
-// e.g. "https://your-project-default-rtdb.firebaseio.com"
+// e.g. https://your-project-default-rtdb.firebaseio.com
 
-const FIREBASE_URL = "https://goals-df1a5-default-rtdb.firebaseio.com";
+const FIREBASE_URL = "https://goals-df1a5-default-rtdb.firebaseio.com/";
 
  
 
@@ -354,7 +348,7 @@ function setSyncBar(msg, cls) {
 
  
 
-async function loadFromCloud() {
+async function loadFromCloud() { // returns promise
 
   if (!FIREBASE_URL || FIREBASE_URL === "YOUR_FIREBASE_URL_HERE") {
 
@@ -521,6 +515,8 @@ function switchTab(t) {
   document.getElementById("tab-daily").className = "tab" + (t === "daily" ? " active" : "");
 
   if (t === "daily") renderDaily();
+
+  if (t === "monthly") render();
 
 }
 
@@ -786,9 +782,71 @@ autoRefreshInterval = setInterval(loadFromCloud, 60000);
 
 // ── Init ─────────────────────────────────────────────────────
 
-loadFromCloud();
+// Always open on current month and day
+
+const _today = new Date();
+
+state.year  = _today.getFullYear();
+
+state.month = _today.getMonth();
+
+state.tab   = "daily";
+
+ 
+
+loadFromCloud().then(() => {
+
+  renderDaily();
+
+  // Set daily selector to today
+
+  const sel = document.getElementById("dsel");
+
+  if (sel) sel.value = _today.getDate();
+
+  renderDailyContent(_today.getDate());
+
+});
+
+ 
+
+// Pre-render monthly view so scroll works when tab is switched
 
 render();
+
+ 
+
+// Scroll monthly table to today's column when tab is switched
+
+const _origSwitchTab = switchTab;
+
+window.switchTab = function(t) {
+
+  _origSwitchTab(t);
+
+  if (t === "monthly") scrollToToday();
+
+};
+
+ 
+
+function scrollToToday() {
+
+  const today = new Date();
+
+  if (state.year !== today.getFullYear() || state.month !== today.getMonth()) return;
+
+  const tableWrap = document.querySelector(".table-wrap");
+
+  if (!tableWrap) return;
+
+  // Each day takes 2 cols of ~22px each, plus habit col (145px) and # col (30px)
+
+  const dayOffset = 175 + (today.getDate() - 1) * 44 - 60;
+
+  tableWrap.scrollLeft = Math.max(0, dayOffset);
+
+}
 
 </script>
 
