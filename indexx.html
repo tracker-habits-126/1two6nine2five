@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Habit Tracker</title>
+
+<style>
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f3;color:#1a1a1a;min-height:100vh}
+
+.app{max-width:100%;padding:16px}
+
+.top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+
+.month-nav{display:flex;align-items:center;gap:8px}
+
+.month-nav button{background:#fff;border:1px solid #ddd;border-radius:8px;padding:5px 12px;cursor:pointer;font-size:13px;color:#333}
+
+.month-nav button:hover{background:#f0f0f0}
+
+.month-label{font-size:15px;font-weight:600;min-width:130px;text-align:center}
+
+.player-names{display:flex;gap:8px;align-items:center;font-size:13px}
+
+.p1c{color:#2d7a3a;font-weight:600;cursor:pointer}
+
+.p2c{color:#c2522b;font-weight:600;cursor:pointer}
+
+.leaderboard{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+
+.lb-card{background:#fff;border-radius:12px;padding:14px 16px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+
+.lb-name{font-size:11px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em}
+
+.lb-pct{font-size:28px;font-weight:700}
+
+.lb-pct.p1{color:#2d7a3a}.lb-pct.p2{color:#c2522b}
+
+.lb-badge{display:inline-block;font-size:11px;padding:2px 10px;border-radius:20px;margin-top:4px}
+
+.winning{background:#eaf3de;color:#3b6d11}.losing{background:#f5f0e8;color:#7a5a3a}.tied{background:#e6f1fb;color:#185fa5}
+
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+
+.tab{padding:7px 16px;border-radius:8px;border:1px solid #ddd;cursor:pointer;font-size:13px;background:#fff;color:#666}
+
+.tab.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a;font-weight:500}
+
+.table-wrap{overflow-x:auto;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+
+table{width:100%;border-collapse:collapse;font-size:12px;background:#fff}
+
+thead tr{background:#f8f8f6}
+
+th{padding:6px 3px;text-align:center;font-weight:500;color:#666;border-bottom:1px solid #eee;font-size:10px;white-space:nowrap}
+
+th.hcol{text-align:left;padding-left:10px;width:145px;font-size:11px;color:#333}
+
+td{padding:4px 3px;text-align:center;border-bottom:1px solid #f0f0f0}
+
+td.hname{text-align:left;padding-left:10px;font-size:12px}
+
+td.hname input{border:none;background:transparent;font-size:12px;color:#1a1a1a;width:112px;font-family:inherit;outline:none}
+
+.tbadge{display:inline-block;font-size:8px;padding:1px 4px;border-radius:8px;background:#faeeda;color:#854f0b;margin-left:3px;vertical-align:middle}
+
+td.pct{font-size:11px;font-weight:700;width:38px}
+
+td.pct.p1{color:#2d7a3a}td.pct.p2{color:#c2522b}
+
+tr:hover td{background:#fafaf8}
+
+.tot-row td{background:#f8f8f6;font-weight:700;border-top:2px solid #e0e0e0}
+
+.sep{border-left:2px solid #e0e0e0!important}
+
+.cb{width:17px;height:17px;border-radius:4px;border:1.5px solid #ccc;background:transparent;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:10px;transition:all .1s;padding:0}
+
+.cb.ck1{background:#2d7a3a;border-color:#2d7a3a;color:#fff}
+
+.cb.ck2{background:#c2522b;border-color:#c2522b;color:#fff}
+
+.daily-wrap{border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+
+.dp{padding:16px;background:#fff}
+
+.dp+.dp{border-top:1px solid #eee}
+
+.dp-name{font-size:13px;font-weight:600;margin-bottom:10px}
+
+.dp-name.p1{color:#2d7a3a}.dp-name.p2{color:#c2522b}
+
+.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+
+.di{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;border:1px solid #e8e8e8;cursor:pointer;font-size:12px;user-select:none;background:#fff;transition:all .1s}
+
+.di.ck1{background:#eaf3de;border-color:#2d7a3a;color:#2d7a3a}
+
+.di.ck2{background:#fcebeb;border-color:#c2522b;color:#c2522b}
+
+.dic{width:16px;height:16px;border-radius:3px;border:1.5px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0}
+
+.di.ck1 .dic{background:#2d7a3a;border-color:#2d7a3a;color:#fff}
+
+.di.ck2 .dic{background:#c2522b;border-color:#c2522b;color:#fff}
+
+.dscores{display:flex;gap:8px;margin-top:10px}
+
+.dscore{flex:1;background:#f8f8f6;border-radius:8px;padding:8px;text-align:center;font-size:11px;color:#888}
+
+.dscore span{display:block;font-size:18px;font-weight:700;margin-bottom:1px}
+
+.dscore span.p1{color:#2d7a3a}.dscore span.p2{color:#c2522b}
+
+.day-picker{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+
+.day-picker label{font-size:13px;color:#666}
+
+.day-picker select{border:1px solid #ddd;border-radius:8px;padding:5px 10px;font-size:13px;background:#fff;color:#333}
+
+.sync-bar{font-size:11px;color:#888;text-align:right;margin-bottom:8px;min-height:16px}
+
+.sync-bar.saving{color:#2d7a3a}.sync-bar.error{color:#c2522b}
+
+.note{font-size:11px;color:#888;margin-top:8px;text-align:center}
+
+@media(max-width:500px){.dgrid{grid-template-columns:1fr}}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="app">
+
+  <div class="top-bar">
+
+    <div class="month-nav">
+
+      <button id="prev-btn">&#8249;</button>
+
+      <div class="month-label" id="month-label"></div>
+
+      <button id="next-btn">&#8250;</button>
+
+    </div>
+
+    <div class="player-names">
+
+      <span class="p1c" id="p1-label" title="Click to rename"></span>
+
+      <span style="color:#999;font-size:12px">vs</span>
+
+      <span class="p2c" id="p2-label" title="Click to rename"></span>
+
+    </div>
+
+  </div>
+
+ 
+
+  <div class="sync-bar" id="sync-bar"></div>
+
+ 
+
+  <div class="leaderboard">
+
+    <div class="lb-card">
+
+      <div class="lb-name" id="lb-p1-name"></div>
+
+      <div class="lb-pct p1" id="lb-p1-pct">—</div>
+
+      <div class="lb-badge" id="lb-p1-badge"></div>
+
+    </div>
+
+    <div class="lb-card">
+
+      <div class="lb-name" id="lb-p2-name"></div>
+
+      <div class="lb-pct p2" id="lb-p2-pct">—</div>
+
+      <div class="lb-badge" id="lb-p2-badge"></div>
+
+    </div>
+
+  </div>
+
+ 
+
+  <div class="tabs">
+
+    <button class="tab active" id="tab-daily"   onclick="switchTab('daily')">Daily check-in</button>
+
+    <button class="tab"        id="tab-monthly" onclick="switchTab('monthly')">Monthly</button>
+
+  </div>
+
+ 
+
+  <!-- Daily view shown first by default -->
+
+  <div id="view-daily">
+
+    <div class="day-picker">
+
+      <label for="dsel">Day:</label>
+
+      <select id="dsel"></select>
+
+    </div>
+
+    <div class="daily-wrap" id="daily-wrap"></div>
+
+  </div>
+
+ 
+
+  <!-- Monthly view hidden by default -->
+
+  <div id="view-monthly" style="display:none">
+
+    <div class="table-wrap" id="table-wrap">
+
+      <table><thead id="thead"></thead><tbody id="tbody"></tbody></table>
+
+    </div>
+
+    <p class="note">★ = 3× weight &nbsp;|&nbsp; Click habit names to rename &nbsp;|&nbsp; Click player names to rename</p>
+
+  </div>
+
+</div>
+
+ 
+
+<script>
+
+// ── CONFIG ───────────────────────────────────────────────────
+
+const FIREBASE_URL = "YOUR_FIREBASE_URL_HERE";
+
+ 
+
+const DEFAULTS = {
+
+  names:  ["Player 1", "Player 2"],
+
+  habits: [
+
+    "Wake up on time","Exercise","Healthy eating","8hrs sleep","Read",
+
+    "No alcohol","Meditate","Drink water","No social media",
+
+    "Journaling","Cold shower","Take vitamins"
+
+  ]
+
+};
+
+const TRIPLE = 5; // first N habits are 3×
+
+// ────────────────────────────────────────────────────────────
+
+ 
+
+const today = new Date();
+
+ 
+
+let state = {
+
+  year:   today.getFullYear(),
+
+  month:  today.getMonth(),
+
+  names:  [...DEFAULTS.names],
+
+  habits: [...DEFAULTS.habits],
+
+  checks: {},
+
+  tab:    "daily"
+
+};
+
+ 
+
+let syncTimer = null;
+
+ 
+
+// ── Firebase ─────────────────────────────────────────────────
+
+async function fbGet(path) {
+
+  try {
+
+    const r = await fetch(`${FIREBASE_URL}/${path}.json`);
+
+    return r.ok ? r.json() : null;
+
+  } catch(e) { return null; }
+
+}
+
+async function fbPatch(path, data) {
+
+  await fetch(`${FIREBASE_URL}/${path}.json`, {
+
+    method: "PATCH",
+
+    headers: {"Content-Type":"application/json"},
+
+    body: JSON.stringify(data)
+
+  });
+
+}
+
+ 
+
+function setSyncBar(msg, cls) {
+
+  const el = document.getElementById("sync-bar");
+
+  el.textContent = msg;
+
+  el.className = "sync-bar" + (cls ? " " + cls : "");
+
+}
+
+ 
+
+async function loadFromCloud() {
+
+  if (!FIREBASE_URL || FIREBASE_URL === "YOUR_FIREBASE_URL_HERE") {
+
+    setSyncBar("⚠️ Running in local mode — add Firebase URL to enable sync", "error");
+
+    return;
+
+  }
+
+  try {
+
+    setSyncBar("Syncing…");
+
+    const data = await fbGet("tracker");
+
+    if (data) {
+
+      if (data.names  && data.names.length)  state.names  = data.names;
+
+      if (data.habits && data.habits.length) state.habits = data.habits;
+
+      if (data.checks) state.checks = data.checks;
+
+    }
+
+    setSyncBar("Last synced " + new Date().toLocaleTimeString());
+
+  } catch(e) {
+
+    setSyncBar("Sync error — check Firebase URL", "error");
+
+  }
+
+}
+
+ 
+
+function scheduleSave(patch) {
+
+  clearTimeout(syncTimer);
+
+  syncTimer = setTimeout(async () => {
+
+    if (!FIREBASE_URL || FIREBASE_URL === "YOUR_FIREBASE_URL_HERE") return;
+
+    try {
+
+      setSyncBar("Saving…", "saving");
+
+      await fbPatch("tracker", patch);
+
+      setSyncBar("Saved " + new Date().toLocaleTimeString());
+
+    } catch(e) { setSyncBar("Save failed", "error"); }
+
+  }, 600);
+
+}
+
+ 
+
+// ── Helpers ──────────────────────────────────────────────────
+
+function dim() { return new Date(state.year, state.month + 1, 0).getDate(); }
+
+function mLabel() { return new Date(state.year, state.month, 1).toLocaleString("default", {month:"long",year:"numeric"}); }
+
+function isTriple(hi) { return hi < TRIPLE; }
+
+function w(hi) { return isTriple(hi) ? 3 : 1; }
+
+function ckey(hi, p, d) { return `${state.year}-${state.month}-${hi}-${p}-${d}`; }
+
+function isChecked(hi, p, d) { return !!state.checks[ckey(hi, p, d)]; }
+
+ 
+
+function toggle(hi, p, d) {
+
+  const k = ckey(hi, p, d);
+
+  state.checks[k] = !state.checks[k];
+
+  scheduleSave({ checks: state.checks });
+
+  updateLeaderboard();
+
+  renderDailyContent(d);
+
+}
+
+ 
+
+// ── Leaderboard ──────────────────────────────────────────────
+
+function weightedPct(p) {
+
+  const isNow = state.year === today.getFullYear() && state.month === today.getMonth();
+
+  const cd = isNow ? today.getDate() : dim();
+
+  if (!cd) return 0;
+
+  let earned = 0, total = 0;
+
+  state.habits.forEach((_, hi) => {
+
+    const wt = w(hi); total += wt * cd;
+
+    for (let d = 1; d <= cd; d++) if (isChecked(hi, p, d)) earned += wt;
+
+  });
+
+  return total ? Math.round(earned / total * 100) : 0;
+
+}
+
+ 
+
+function habitPct(hi, p) {
+
+  const isNow = state.year === today.getFullYear() && state.month === today.getMonth();
+
+  const cd = isNow ? today.getDate() : dim();
+
+  if (!cd) return 0;
+
+  let c = 0;
+
+  for (let d = 1; d <= cd; d++) if (isChecked(hi, p, d)) c++;
+
+  return Math.round(c / cd * 100);
+
+}
+
+ 
+
+function updateLeaderboard() {
+
+  document.getElementById("month-label").textContent  = mLabel();
+
+  document.getElementById("p1-label").textContent     = state.names[0];
+
+  document.getElementById("p2-label").textContent     = state.names[1];
+
+  document.getElementById("lb-p1-name").textContent   = state.names[0];
+
+  document.getElementById("lb-p2-name").textContent   = state.names[1];
+
+ 
+
+  const op1 = weightedPct(0), op2 = weightedPct(1);
+
+  document.getElementById("lb-p1-pct").textContent = op1 + "%";
+
+  document.getElementById("lb-p2-pct").textContent = op2 + "%";
+
+ 
+
+  const b1 = document.getElementById("lb-p1-badge");
+
+  const b2 = document.getElementById("lb-p2-badge");
+
+  if (op1 > op2) {
+
+    b1.textContent = "🏆 Leading"; b1.className = "lb-badge winning";
+
+    b2.textContent = "Trailing";   b2.className = "lb-badge losing";
+
+  } else if (op2 > op1) {
+
+    b2.textContent = "🏆 Leading"; b2.className = "lb-badge winning";
+
+    b1.textContent = "Trailing";   b1.className = "lb-badge losing";
+
+  } else {
+
+    b1.textContent = "Tied"; b1.className = "lb-badge tied";
+
+    b2.textContent = "Tied"; b2.className = "lb-badge tied";
+
+  }
+
+}
+
+ 
+
+// ── Daily view ───────────────────────────────────────────────
+
+function renderDailyContent(day) {
+
+  const wrap = document.getElementById("daily-wrap");
+
+  if (!wrap) return;
+
+  let html = "";
+
+  [0, 1].forEach(p => {
+
+    const pc = p === 0 ? "p1" : "p2";
+
+    let ep = 0, tp = 0;
+
+    state.habits.forEach((_, hi) => {
+
+      const wt = w(hi); tp += wt;
+
+      if (isChecked(hi, p, day)) ep += wt;
+
+    });
+
+    const dpct = tp ? Math.round(ep / tp * 100) : 0;
+
+    const done = state.habits.filter((_, hi) => isChecked(hi, p, day)).length;
+
+    html += `<div class="dp">
+
+      <div class="dp-name ${pc}">${state.names[p]}</div>
+
+      <div class="dgrid">`;
+
+    state.habits.forEach((h, hi) => {
+
+      const c = isChecked(hi, p, day);
+
+      html += `<div class="di ${c ? "ck"+(p+1) : ""}" data-hi="${hi}" data-p="${p}" data-day="${day}">
+
+        <div class="dic">${c ? "✓" : ""}</div>
+
+        <span>${h}${isTriple(hi) ? '<span class="tbadge">3×</span>' : ""}</span>
+
+      </div>`;
+
+    });
+
+    html += `</div>
+
+      <div class="dscores">
+
+        <div class="dscore"><span class="${pc}">${dpct}%</span>Weighted score</div>
+
+        <div class="dscore"><span class="${pc}">${done}/${state.habits.length}</span>Habits done</div>
+
+      </div>
+
+    </div>`;
+
+  });
+
+  wrap.innerHTML = html;
+
+  wrap.querySelectorAll(".di").forEach(el => {
+
+    el.addEventListener("click", () => toggle(+el.dataset.hi, +el.dataset.p, +el.dataset.day));
+
+  });
+
+}
+
+ 
+
+function renderDailyView() {
+
+  const days = dim();
+
+  const isNow = state.year === today.getFullYear() && state.month === today.getMonth();
+
+  const activeDay = isNow ? today.getDate() : 1;
+
+  const sel = document.getElementById("dsel");
+
+  const prev = +sel.value || activeDay;
+
+  sel.innerHTML = "";
+
+  for (let d = 1; d <= days; d++) {
+
+    const o = document.createElement("option");
+
+    o.value = d;
+
+    o.textContent = new Date(state.year, state.month, d)
+
+      .toLocaleDateString("default", {weekday:"short", month:"short", day:"numeric"});
+
+    if (d === (prev <= days ? prev : activeDay)) o.selected = true;
+
+    sel.appendChild(o);
+
+  }
+
+  sel.onchange = () => renderDailyContent(+sel.value);
+
+  renderDailyContent(+sel.value);
+
+}
+
+ 
+
+// ── Monthly view ─────────────────────────────────────────────
+
+function renderMonthlyView() {
+
+  const days = dim();
+
+  const isNow = state.year === today.getFullYear() && state.month === today.getMonth();
+
+  const todayDay = isNow ? today.getDate() : null;
+
+ 
+
+  const thead = document.getElementById("thead");
+
+  let h1 = `<tr><th class="hcol" rowspan="2">Habit</th>`;
+
+  for (let d = 1; d <= days; d++) {
+
+    h1 += `<th colspan="2" style="${d===todayDay?"background:#e8f5e9;":""}">${d}</th>`;
+
+  }
+
+  h1 += `<th colspan="2" class="sep">%</th></tr>`;
+
+  let h2 = `<tr>`;
+
+  for (let d = 1; d <= days; d++) {
+
+    const bg = d === todayDay ? "background:#e8f5e9;" : "";
+
+    h2 += `<th style="${bg};color:#2d7a3a">${state.names[0].charAt(0)}</th>`;
+
+    h2 += `<th style="${bg};color:#c2522b">${state.names[1].charAt(0)}</th>`;
+
+  }
+
+  h2 += `<th class="sep" style="color:#2d7a3a">${state.names[0].charAt(0)}</th>`;
+
+  h2 += `<th style="color:#c2522b">${state.names[1].charAt(0)}</th></tr>`;
+
+  thead.innerHTML = h1 + h2;
+
+ 
+
+  const tbody = document.getElementById("tbody");
+
+  let rows = "";
+
+  state.habits.forEach((habit, hi) => {
+
+    rows += `<tr><td class="hname"><input type="text" value="${habit}" data-hi="${hi}" maxlength="28">${isTriple(hi) ? '<span class="tbadge">3×</span>' : ""}</td>`;
+
+    for (let d = 1; d <= days; d++) {
+
+      const bg = d === todayDay ? "background:#e8f5e9;" : "";
+
+      rows += `<td style="${bg}"><button class="cb ${isChecked(hi,0,d)?"ck1":""}" data-hi="${hi}" data-p="0" data-day="${d}">✓</button></td>`;
+
+      rows += `<td style="${bg}"><button class="cb ${isChecked(hi,1,d)?"ck2":""}" data-hi="${hi}" data-p="1" data-day="${d}">✓</button></td>`;
+
+    }
+
+    rows += `<td class="pct p1 sep">${habitPct(hi,0)}%</td><td class="pct p2">${habitPct(hi,1)}%</td></tr>`;
+
+  });
+
+  const t0 = weightedPct(0), t1 = weightedPct(1);
+
+  rows += `<tr class="tot-row"><td class="hname" style="padding-left:10px">Overall (weighted)</td>`;
+
+  for (let d = 1; d <= days; d++) rows += `<td></td><td></td>`;
+
+  rows += `<td class="pct p1 sep" style="font-size:13px">${t0}%</td><td class="pct p2" style="font-size:13px">${t1}%</td></tr>`;
+
+  tbody.innerHTML = rows;
+
+ 
+
+  tbody.querySelectorAll(".cb").forEach(b => {
+
+    b.addEventListener("click", e => {
+
+      e.stopPropagation();
+
+      const k = ckey(+b.dataset.hi, +b.dataset.p, +b.dataset.day);
+
+      state.checks[k] = !state.checks[k];
+
+      scheduleSave({ checks: state.checks });
+
+      updateLeaderboard();
+
+      renderMonthlyView();
+
+    });
+
+  });
+
+  tbody.querySelectorAll("input[type=text]").forEach(inp => {
+
+    inp.addEventListener("change", e => {
+
+      state.habits[+e.target.dataset.hi] = e.target.value;
+
+      scheduleSave({ habits: state.habits });
+
+    });
+
+    inp.addEventListener("click", e => e.stopPropagation());
+
+  });
+
+ 
+
+  // Scroll to today
+
+  if (todayDay) {
+
+    const tw = document.getElementById("table-wrap");
+
+    if (tw) tw.scrollLeft = Math.max(0, 175 + (todayDay - 1) * 44 - 60);
+
+  }
+
+}
+
+ 
+
+// ── Tab switching ────────────────────────────────────────────
+
+function switchTab(t) {
+
+  state.tab = t;
+
+  document.getElementById("view-daily").style.display   = t === "daily"   ? "" : "none";
+
+  document.getElementById("view-monthly").style.display = t === "monthly" ? "" : "none";
+
+  document.getElementById("tab-daily").className   = "tab" + (t === "daily"   ? " active" : "");
+
+  document.getElementById("tab-monthly").className = "tab" + (t === "monthly" ? " active" : "");
+
+  if (t === "daily")   renderDailyView();
+
+  if (t === "monthly") { renderMonthlyView(); updateLeaderboard(); }
+
+}
+
+ 
+
+// ── Month nav ────────────────────────────────────────────────
+
+document.getElementById("prev-btn").addEventListener("click", () => {
+
+  state.month--; if (state.month < 0) { state.month = 11; state.year--; }
+
+  updateLeaderboard();
+
+  if (state.tab === "daily")   renderDailyView();
+
+  if (state.tab === "monthly") renderMonthlyView();
+
+});
+
+document.getElementById("next-btn").addEventListener("click", () => {
+
+  state.month++; if (state.month > 11) { state.month = 0; state.year++; }
+
+  updateLeaderboard();
+
+  if (state.tab === "daily")   renderDailyView();
+
+  if (state.tab === "monthly") renderMonthlyView();
+
+});
+
+ 
+
+// ── Player name editing ──────────────────────────────────────
+
+["p1-label","p2-label"].forEach((id, i) => {
+
+  document.getElementById(id).addEventListener("click", () => {
+
+    const v = prompt(`Rename ${state.names[i]}:`, state.names[i]);
+
+    if (v && v.trim()) {
+
+      state.names[i] = v.trim();
+
+      scheduleSave({ names: state.names });
+
+      updateLeaderboard();
+
+      if (state.tab === "daily")   renderDailyView();
+
+      if (state.tab === "monthly") renderMonthlyView();
+
+    }
+
+  });
+
+});
+
+ 
+
+// ── Auto-refresh every 60s ───────────────────────────────────
+
+setInterval(async () => {
+
+  await loadFromCloud();
+
+  updateLeaderboard();
+
+  if (state.tab === "daily")   renderDailyView();
+
+  if (state.tab === "monthly") renderMonthlyView();
+
+}, 60000);
+
+ 
+
+// ── Init ─────────────────────────────────────────────────────
+
+(async () => {
+
+  // 1. Render defaults immediately so habits are always visible
+
+  updateLeaderboard();
+
+  renderDailyView();
+
+ 
+
+  // 2. Load from cloud and re-render with saved data
+
+  await loadFromCloud();
+
+  updateLeaderboard();
+
+  renderDailyView();
+
+})();
+
+</script>
+
+</body>
+
+</html>
