@@ -18,8 +18,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 .app{max-width:100%;padding:16px}
 
-h1{font-size:18px;font-weight:600;margin-bottom:14px;color:#1a1a1a}
-
 .top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
 
 .month-nav{display:flex;align-items:center;gap:8px}
@@ -202,13 +200,15 @@ tr:hover td{background:#fafaf8}
 
   <div class="tabs">
 
-    <button class="tab active" id="tab-daily" onclick="switchTab('daily')">Daily check-in</button>
+    <button class="tab active" id="tab-daily"   onclick="switchTab('daily')">Daily check-in</button>
 
-    <button class="tab" id="tab-monthly" onclick="switchTab('monthly')">Monthly</button>
+    <button class="tab"        id="tab-monthly" onclick="switchTab('monthly')">Monthly</button>
 
   </div>
 
  
+
+  <!-- Daily view shown first by default -->
 
   <div id="view-daily">
 
@@ -220,9 +220,17 @@ tr:hover td{background:#fafaf8}
 
     </div>
 
+    <div class="daily-wrap" id="daily-wrap"></div>
+
+  </div>
+
+ 
+
+  <!-- Monthly view hidden by default -->
+
   <div id="view-monthly" style="display:none">
 
-    <div class="table-wrap">
+    <div class="table-wrap" id="table-wrap">
 
       <table><thead id="thead"></thead><tbody id="tbody"></tbody></table>
 
@@ -238,19 +246,15 @@ tr:hover td{background:#fafaf8}
 
 <script>
 
-// ── CONFIG — edit these ──────────────────────────────────────
+// ── CONFIG ───────────────────────────────────────────────────
 
-// Replace with your Firebase Realtime Database URL:
-
-// e.g. https://your-project-default-rtdb.firebaseio.com
-
-const FIREBASE_URL = "YOUR_FIREBASE_URL_HERE";
+const FIREBASE_URL = "https://goals-df1a5-default-rtdb.firebaseio.com/";
 
  
 
 const DEFAULTS = {
 
-  names: ["Player 1", "Player 2"],
+  names:  ["Player 1", "Player 2"],
 
   habits: [
 
@@ -270,19 +274,23 @@ const TRIPLE = 5; // first N habits are 3×
 
  
 
+const today = new Date();
+
+ 
+
 let state = {
 
-  year: new Date().getFullYear(),
+  year:   today.getFullYear(),
 
-  month: new Date().getMonth(),
+  month:  today.getMonth(),
 
-  names: [...DEFAULTS.names],
+  names:  [...DEFAULTS.names],
 
   habits: [...DEFAULTS.habits],
 
   checks: {},
 
-  tab: "monthly"
+  tab:    "daily"
 
 };
 
@@ -290,31 +298,19 @@ let state = {
 
 let syncTimer = null;
 
-let autoRefreshInterval = null;
-
  
 
-// ── Firebase helpers ─────────────────────────────────────────
+// ── Firebase ─────────────────────────────────────────────────
 
 async function fbGet(path) {
 
-  const r = await fetch(`${FIREBASE_URL}/${path}.json`);
+  try {
 
-  return r.ok ? r.json() : null;
+    const r = await fetch(`${FIREBASE_URL}/${path}.json`);
 
-}
+    return r.ok ? r.json() : null;
 
-async function fbSet(path, data) {
-
-  await fetch(`${FIREBASE_URL}/${path}.json`, {
-
-    method: "PUT",
-
-    headers: {"Content-Type":"application/json"},
-
-    body: JSON.stringify(data)
-
-  });
+  } catch(e) { return null; }
 
 }
 
@@ -334,8 +330,6 @@ async function fbPatch(path, data) {
 
  
 
-// ── Sync ────────────────────────────────────────────────────
-
 function setSyncBar(msg, cls) {
 
   const el = document.getElementById("sync-bar");
@@ -352,7 +346,7 @@ async function loadFromCloud() {
 
   if (!FIREBASE_URL || FIREBASE_URL === "YOUR_FIREBASE_URL_HERE") {
 
-    setSyncBar("⚠️ No Firebase URL set — running in local mode only", "error");
+    setSyncBar("⚠️ Running in local mode — add Firebase URL to enable sync", "error");
 
     return;
 
@@ -366,7 +360,7 @@ async function loadFromCloud() {
 
     if (data) {
 
-      if (data.names)  state.names  = data.names;
+      if (data.names  && data.names.length)  state.names  = data.names;
 
       if (data.habits && data.habits.length) state.habits = data.habits;
 
@@ -374,7 +368,7 @@ async function loadFromCloud() {
 
     }
 
-    setSyncBar("Last synced " + new Date().toLocaleTimeString(), "");
+    setSyncBar("Last synced " + new Date().toLocaleTimeString());
 
   } catch(e) {
 
@@ -386,39 +380,31 @@ async function loadFromCloud() {
 
  
 
-async function saveToCloud(patch) {
-
-  if (!FIREBASE_URL || FIREBASE_URL === "YOUR_FIREBASE_URL_HERE") return;
-
-  try {
-
-    setSyncBar("Saving…", "saving");
-
-    await fbPatch("tracker", patch);
-
-    setSyncBar("Saved " + new Date().toLocaleTimeString(), "");
-
-  } catch(e) {
-
-    setSyncBar("Save failed", "error");
-
-  }
-
-}
-
- 
-
 function scheduleSave(patch) {
 
   clearTimeout(syncTimer);
 
-  syncTimer = setTimeout(() => saveToCloud(patch), 600);
+  syncTimer = setTimeout(async () => {
+
+    if (!FIREBASE_URL || FIREBASE_URL === "YOUR_FIREBASE_URL_HERE") return;
+
+    try {
+
+      setSyncBar("Saving…", "saving");
+
+      await fbPatch("tracker", patch);
+
+      setSyncBar("Saved " + new Date().toLocaleTimeString());
+
+    } catch(e) { setSyncBar("Save failed", "error"); }
+
+  }, 600);
 
 }
 
  
 
-// ── Core helpers ────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────
 
 function dim() { return new Date(state.year, state.month + 1, 0).getDate(); }
 
@@ -442,17 +428,17 @@ function toggle(hi, p, d) {
 
   scheduleSave({ checks: state.checks });
 
-  render();
+  updateLeaderboard();
 
-  if (state.tab === "daily") renderDailyContent(d);
+  renderDailyContent(d);
 
 }
 
  
 
-function weightedPct(p) {
+// ── Leaderboard ──────────────────────────────────────────────
 
-  const today = new Date();
+function weightedPct(p) {
 
   const isNow = state.year === today.getFullYear() && state.month === today.getMonth();
 
@@ -478,8 +464,6 @@ function weightedPct(p) {
 
 function habitPct(hi, p) {
 
-  const today = new Date();
-
   const isNow = state.year === today.getFullYear() && state.month === today.getMonth();
 
   const cd = isNow ? today.getDate() : dim();
@@ -496,69 +480,63 @@ function habitPct(hi, p) {
 
  
 
-// ── Tabs ────────────────────────────────────────────────────
+function updateLeaderboard() {
 
-function switchTab(t) {
+  document.getElementById("month-label").textContent  = mLabel();
 
-  state.tab = t;
+  document.getElementById("p1-label").textContent     = state.names[0];
 
-  document.getElementById("view-monthly").style.display = t === "monthly" ? "" : "none";
+  document.getElementById("p2-label").textContent     = state.names[1];
 
-  document.getElementById("view-daily").style.display = t === "daily" ? "" : "none";
+  document.getElementById("lb-p1-name").textContent   = state.names[0];
 
-  document.getElementById("tab-monthly").className = "tab" + (t === "monthly" ? " active" : "");
-
-  document.getElementById("tab-daily").className = "tab" + (t === "daily" ? " active" : "");
-
-  if (t === "daily") renderDaily();
-
-  if (t === "monthly") render();
-
-}
+  document.getElementById("lb-p2-name").textContent   = state.names[1];
 
  
 
-// ── Daily view ──────────────────────────────────────────────
+  const op1 = weightedPct(0), op2 = weightedPct(1);
 
-function renderDaily(forceDay) {
+  document.getElementById("lb-p1-pct").textContent = op1 + "%";
 
-  const days = dim(), today = new Date();
+  document.getElementById("lb-p2-pct").textContent = op2 + "%";
 
-  const isNow = state.year === today.getFullYear() && state.month === today.getMonth();
+ 
 
-  const def = forceDay || (isNow ? today.getDate() : 1);
+  const b1 = document.getElementById("lb-p1-badge");
 
-  const sel = document.getElementById("dsel");
+  const b2 = document.getElementById("lb-p2-badge");
 
-  sel.innerHTML = "";
+  if (op1 > op2) {
 
-  for (let d = 1; d <= days; d++) {
+    b1.textContent = "🏆 Leading"; b1.className = "lb-badge winning";
 
-    const o = document.createElement("option");
+    b2.textContent = "Trailing";   b2.className = "lb-badge losing";
 
-    o.value = d;
+  } else if (op2 > op1) {
 
-    o.textContent = new Date(state.year, state.month, d).toLocaleDateString("default", {weekday:"short",month:"short",day:"numeric"});
+    b2.textContent = "🏆 Leading"; b2.className = "lb-badge winning";
 
-    if (d === def) o.selected = true;
+    b1.textContent = "Trailing";   b1.className = "lb-badge losing";
 
-    sel.appendChild(o);
+  } else {
+
+    b1.textContent = "Tied"; b1.className = "lb-badge tied";
+
+    b2.textContent = "Tied"; b2.className = "lb-badge tied";
 
   }
 
-  sel.value = def;
-
-  sel.onchange = () => renderDailyContent(+sel.value);
-
-  renderDailyContent(def);
-
 }
 
  
+
+// ── Daily view ───────────────────────────────────────────────
 
 function renderDailyContent(day) {
 
   const wrap = document.getElementById("daily-wrap");
+
+  if (!wrap) return;
 
   let html = "";
 
@@ -568,19 +546,29 @@ function renderDailyContent(day) {
 
     let ep = 0, tp = 0;
 
-    state.habits.forEach((_, hi) => { const wt = w(hi); tp += wt; if (isChecked(hi, p, day)) ep += wt; });
+    state.habits.forEach((_, hi) => {
+
+      const wt = w(hi); tp += wt;
+
+      if (isChecked(hi, p, day)) ep += wt;
+
+    });
 
     const dpct = tp ? Math.round(ep / tp * 100) : 0;
 
     const done = state.habits.filter((_, hi) => isChecked(hi, p, day)).length;
 
-    html += `<div class="dp"><div class="dp-name ${pc}">${state.names[p]}</div><div class="dgrid">`;
+    html += `<div class="dp">
+
+      <div class="dp-name ${pc}">${state.names[p]}</div>
+
+      <div class="dgrid">`;
 
     state.habits.forEach((h, hi) => {
 
       const c = isChecked(hi, p, day);
 
-      html += `<div class="di ${c ? "ck"+[p+1] : ""}" data-hi="${hi}" data-p="${p}" data-day="${day}">
+      html += `<div class="di ${c ? "ck"+(p+1) : ""}" data-hi="${hi}" data-p="${p}" data-day="${day}">
 
         <div class="dic">${c ? "✓" : ""}</div>
 
@@ -590,13 +578,17 @@ function renderDailyContent(day) {
 
     });
 
-    html += `</div><div class="dscores">
+    html += `</div>
 
-      <div class="dscore"><span class="${pc}">${dpct}%</span>Weighted score</div>
+      <div class="dscores">
 
-      <div class="dscore"><span class="${pc}">${done}/${state.habits.length}</span>Habits done</div>
+        <div class="dscore"><span class="${pc}">${dpct}%</span>Weighted score</div>
 
-    </div></div>`;
+        <div class="dscore"><span class="${pc}">${done}/${state.habits.length}</span>Habits done</div>
+
+      </div>
+
+    </div>`;
 
   });
 
@@ -612,39 +604,49 @@ function renderDailyContent(day) {
 
  
 
-// ── Main render ─────────────────────────────────────────────
+function renderDailyView() {
 
-function render() {
+  const days = dim();
 
-  document.getElementById("month-label").textContent = mLabel();
+  const isNow = state.year === today.getFullYear() && state.month === today.getMonth();
 
-  document.getElementById("p1-label").textContent = state.names[0];
+  const activeDay = isNow ? today.getDate() : 1;
 
-  document.getElementById("p2-label").textContent = state.names[1];
+  const sel = document.getElementById("dsel");
 
-  document.getElementById("lb-p1-name").textContent = state.names[0];
+  const prev = +sel.value || activeDay;
 
-  document.getElementById("lb-p2-name").textContent = state.names[1];
+  sel.innerHTML = "";
+
+  for (let d = 1; d <= days; d++) {
+
+    const o = document.createElement("option");
+
+    o.value = d;
+
+    o.textContent = new Date(state.year, state.month, d)
+
+      .toLocaleDateString("default", {weekday:"short", month:"short", day:"numeric"});
+
+    if (d === (prev <= days ? prev : activeDay)) o.selected = true;
+
+    sel.appendChild(o);
+
+  }
+
+  sel.onchange = () => renderDailyContent(+sel.value);
+
+  renderDailyContent(+sel.value);
+
+}
 
  
 
-  const op1 = weightedPct(0), op2 = weightedPct(1);
+// ── Monthly view ─────────────────────────────────────────────
 
-  document.getElementById("lb-p1-pct").textContent = op1 + "%";
+function renderMonthlyView() {
 
-  document.getElementById("lb-p2-pct").textContent = op2 + "%";
-
-  const b1 = document.getElementById("lb-p1-badge"), b2 = document.getElementById("lb-p2-badge");
-
-  if (op1 > op2) { b1.textContent = "🏆 Leading"; b1.className = "lb-badge winning"; b2.textContent = "Trailing"; b2.className = "lb-badge losing"; }
-
-  else if (op2 > op1) { b2.textContent = "🏆 Leading"; b2.className = "lb-badge winning"; b1.textContent = "Trailing"; b1.className = "lb-badge losing"; }
-
-  else { b1.textContent = "Tied"; b1.className = "lb-badge tied"; b2.textContent = "Tied"; b2.className = "lb-badge tied"; }
-
- 
-
-  const days = dim(), today = new Date();
+  const days = dim();
 
   const isNow = state.year === today.getFullYear() && state.month === today.getMonth();
 
@@ -652,13 +654,15 @@ function render() {
 
  
 
-  // thead
-
   const thead = document.getElementById("thead");
 
   let h1 = `<tr><th class="hcol" rowspan="2">Habit</th>`;
 
-  for (let d = 1; d <= days; d++) h1 += `<th colspan="2" style="${d===todayDay?"background:#e8f5e9;":""}">${d}</th>`;
+  for (let d = 1; d <= days; d++) {
+
+    h1 += `<th colspan="2" style="${d===todayDay?"background:#e8f5e9;":""}">${d}</th>`;
+
+  }
 
   h1 += `<th colspan="2" class="sep">%</th></tr>`;
 
@@ -668,17 +672,19 @@ function render() {
 
     const bg = d === todayDay ? "background:#e8f5e9;" : "";
 
-    h2 += `<th style="${bg};color:#2d7a3a">${state.names[0].charAt(0)}</th><th style="${bg};color:#c2522b">${state.names[1].charAt(0)}</th>`;
+    h2 += `<th style="${bg};color:#2d7a3a">${state.names[0].charAt(0)}</th>`;
+
+    h2 += `<th style="${bg};color:#c2522b">${state.names[1].charAt(0)}</th>`;
 
   }
 
-  h2 += `<th class="sep" style="color:#2d7a3a">${state.names[0].charAt(0)}</th><th style="color:#c2522b">${state.names[1].charAt(0)}</th></tr>`;
+  h2 += `<th class="sep" style="color:#2d7a3a">${state.names[0].charAt(0)}</th>`;
+
+  h2 += `<th style="color:#c2522b">${state.names[1].charAt(0)}</th></tr>`;
 
   thead.innerHTML = h1 + h2;
 
  
-
-  // tbody
 
   const tbody = document.getElementById("tbody");
 
@@ -692,11 +698,9 @@ function render() {
 
       const bg = d === todayDay ? "background:#e8f5e9;" : "";
 
-      const c0 = isChecked(hi, 0, d), c1 = isChecked(hi, 1, d);
+      rows += `<td style="${bg}"><button class="cb ${isChecked(hi,0,d)?"ck1":""}" data-hi="${hi}" data-p="0" data-day="${d}">✓</button></td>`;
 
-      rows += `<td style="${bg}"><button class="cb ${c0?"ck1":""}" data-hi="${hi}" data-p="0" data-day="${d}">✓</button></td>`;
-
-      rows += `<td style="${bg}"><button class="cb ${c1?"ck2":""}" data-hi="${hi}" data-p="1" data-day="${d}">✓</button></td>`;
+      rows += `<td style="${bg}"><button class="cb ${isChecked(hi,1,d)?"ck2":""}" data-hi="${hi}" data-p="1" data-day="${d}">✓</button></td>`;
 
     }
 
@@ -718,7 +722,21 @@ function render() {
 
   tbody.querySelectorAll(".cb").forEach(b => {
 
-    b.addEventListener("click", e => { e.stopPropagation(); toggle(+b.dataset.hi, +b.dataset.p, +b.dataset.day); });
+    b.addEventListener("click", e => {
+
+      e.stopPropagation();
+
+      const k = ckey(+b.dataset.hi, +b.dataset.p, +b.dataset.day);
+
+      state.checks[k] = !state.checks[k];
+
+      scheduleSave({ checks: state.checks });
+
+      updateLeaderboard();
+
+      renderMonthlyView();
+
+    });
 
   });
 
@@ -730,31 +748,79 @@ function render() {
 
       scheduleSave({ habits: state.habits });
 
-      render();
-
     });
 
     inp.addEventListener("click", e => e.stopPropagation());
 
   });
 
+ 
+
+  // Scroll to today
+
+  if (todayDay) {
+
+    const tw = document.getElementById("table-wrap");
+
+    if (tw) tw.scrollLeft = Math.max(0, 175 + (todayDay - 1) * 44 - 60);
+
+  }
+
 }
 
  
 
-// ── Nav & name editing ───────────────────────────────────────
+// ── Tab switching ────────────────────────────────────────────
+
+function switchTab(t) {
+
+  state.tab = t;
+
+  document.getElementById("view-daily").style.display   = t === "daily"   ? "" : "none";
+
+  document.getElementById("view-monthly").style.display = t === "monthly" ? "" : "none";
+
+  document.getElementById("tab-daily").className   = "tab" + (t === "daily"   ? " active" : "");
+
+  document.getElementById("tab-monthly").className = "tab" + (t === "monthly" ? " active" : "");
+
+  if (t === "daily")   renderDailyView();
+
+  if (t === "monthly") { renderMonthlyView(); updateLeaderboard(); }
+
+}
+
+ 
+
+// ── Month nav ────────────────────────────────────────────────
 
 document.getElementById("prev-btn").addEventListener("click", () => {
 
-  state.month--; if (state.month < 0) { state.month = 11; state.year--; } render();
+  state.month--; if (state.month < 0) { state.month = 11; state.year--; }
+
+  updateLeaderboard();
+
+  if (state.tab === "daily")   renderDailyView();
+
+  if (state.tab === "monthly") renderMonthlyView();
 
 });
 
 document.getElementById("next-btn").addEventListener("click", () => {
 
-  state.month++; if (state.month > 11) { state.month = 0; state.year++; } render();
+  state.month++; if (state.month > 11) { state.month = 0; state.year++; }
+
+  updateLeaderboard();
+
+  if (state.tab === "daily")   renderDailyView();
+
+  if (state.tab === "monthly") renderMonthlyView();
 
 });
+
+ 
+
+// ── Player name editing ──────────────────────────────────────
 
 ["p1-label","p2-label"].forEach((id, i) => {
 
@@ -762,7 +828,19 @@ document.getElementById("next-btn").addEventListener("click", () => {
 
     const v = prompt(`Rename ${state.names[i]}:`, state.names[i]);
 
-    if (v && v.trim()) { state.names[i] = v.trim(); scheduleSave({ names: state.names }); render(); }
+    if (v && v.trim()) {
+
+      state.names[i] = v.trim();
+
+      scheduleSave({ names: state.names });
+
+      updateLeaderboard();
+
+      if (state.tab === "daily")   renderDailyView();
+
+      if (state.tab === "monthly") renderMonthlyView();
+
+    }
 
   });
 
@@ -772,79 +850,41 @@ document.getElementById("next-btn").addEventListener("click", () => {
 
 // ── Auto-refresh every 60s ───────────────────────────────────
 
-autoRefreshInterval = setInterval(loadFromCloud, 60000);
+setInterval(async () => {
+
+  await loadFromCloud();
+
+  updateLeaderboard();
+
+  if (state.tab === "daily")   renderDailyView();
+
+  if (state.tab === "monthly") renderMonthlyView();
+
+}, 60000);
 
  
 
 // ── Init ─────────────────────────────────────────────────────
 
-const _today = new Date();
+(async () => {
 
-state.year  = _today.getFullYear();
+  // 1. Render defaults immediately so habits are always visible
 
-state.month = _today.getMonth();
+  updateLeaderboard();
 
-state.tab   = "daily";
-
- 
-
-document.getElementById("view-monthly").style.display = "none";
-
-document.getElementById("view-daily").style.display   = "";
+  renderDailyView();
 
  
 
-// Render defaults immediately — habits visible before Firebase responds
+  // 2. Load from cloud and re-render with saved data
 
-render();
+  await loadFromCloud();
 
-renderDaily(_today.getDate());
+  updateLeaderboard();
 
- 
+  renderDailyView();
 
-// Sync from cloud then re-render with saved data
-
-loadFromCloud().then(() => {
-
-  render();
-
-  renderDaily(_today.getDate());
-
-});
-
- 
-
-// Scroll monthly table to today's column when tab is switched
-
-const _origSwitchTab = switchTab;
-
-window.switchTab = function(t) {
-
-  _origSwitchTab(t);
-
-  if (t === "monthly") scrollToToday();
-
-};
-
- 
-
-function scrollToToday() {
-
-  const today = new Date();
-
-  if (state.year !== today.getFullYear() || state.month !== today.getMonth()) return;
-
-  const tableWrap = document.querySelector(".table-wrap");
-
-  if (!tableWrap) return;
-
-  // Each day takes 2 cols of ~22px each, plus habit col (145px) and # col (30px)
-
-  const dayOffset = 175 + (today.getDate() - 1) * 44 - 60;
-
-  tableWrap.scrollLeft = Math.max(0, dayOffset);
-
-}
+})();
 
 </script>
 
